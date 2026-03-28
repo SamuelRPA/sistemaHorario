@@ -1,0 +1,19 @@
+# Raíz del monorepo — entorno y herramientas comunes
+
+# Variables de entorno (secretos)
+.env
+.env.local
+.env.*.local
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs en la raíz del proyecto
+*.log

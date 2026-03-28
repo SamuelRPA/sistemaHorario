@@ -1,0 +1,257 @@
+// Prisma schema - Sistema de horarios
+// Hora de referencia: Bolivia (America/La_Paz)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  usuario
+  asesora
+  administrador
+}
+
+enum Modalidad {
+  online
+  presencial
+  ambos
+}
+
+// Una sola tabla de login: email + password + rol
+model Cuenta {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  rol          Rol
+  activo       Boolean  @default(true)
+
+  usuario  Usuario?
+  asesora  Asesora?
+}
+
+model Usuario {
+  id                 String    @id @default(uuid())
+  cuentaId           String    @unique @map("cuenta_id")
+  nombre             String
+  apellidos          String
+  celular            String?
+  planId             String?   @map("plan_id")
+  funciones         Json?     // ["aprende_a_leer", "nivelacion", "matematicas", "lectura_dinamica"] como asesoras
+  pais               String    @default("Bolivia")
+  departamento       String?
+  modalidad          Modalidad @default(online)
+  tutorLegal         String?   @map("tutor_legal")
+  horasSaldo         Int       @default(0) @map("horas_saldo")
+  clasesPorSemana   Int?      @map("clases_por_semana")
+  observaciones      String?   @db.Text
+  fechaRegistro      DateTime  @default(now()) @map("fecha_registro")
+  cuotasTotales      Int?      @map("cuotas_totales")
+  montoTotal         Decimal?  @map("monto_total") @db.Decimal(12, 2)
+  montoEnganche      Decimal?  @map("monto_enganche") @db.Decimal(12, 2)
+  montoPorCuota      Decimal?  @map("monto_por_cuota") @db.Decimal(12, 2)
+  fechaPrimerVencimiento DateTime? @map("fecha_primer_vencimiento") @db.Date
+  pagoContado        Boolean   @default(false) @map("pago_contado")
+  enviadoRevision    Boolean   @default(false) @map("enviado_revision")
+  faltasConsecutivas Int       @default(0) @map("faltas_consecutivas")
+  activo             Boolean   @default(true)
+
+  cuenta         Cuenta   @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  plan           Plan?    @relation(fields: [planId], references: [id])
+  inscripciones           InscripcionHorario[]
+  inscripcionesSemanales  InscripcionHorarioSemana[]
+  asistencias    AsistenciaSesion[]
+  mensualidades  Mensualidad[]
+  abonos        Abono[]
+  auditoriasMod  Auditoria[] @relation("UsuarioModificado")
+}
+
+model Abono {
+  id         String   @id @default(uuid())
+  usuarioId String   @map("usuario_id")
+  monto     Decimal  @db.Decimal(12, 2)
+  fecha     DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@map("abono")
+}
+
+model Asesora {
+  id                     String    @id @default(uuid())
+  cuentaId               String    @unique @map("cuenta_id")
+  nombre                 String
+  apellidos              String
+  celular                String?
+  email                  String?
+  linkZoomGlobal         String?   @map("link_zoom_global")
+  funciones              Json?     // ["aprende_a_leer", "nivelacion", "matematicas", "lectura_dinamica"]
+  // Conteo de horas admin: desde inicio de este día (Bolivia) al confirmar horarios disponibles.
+  fechaConteoHorasDesde  DateTime? @map("fecha_conteo_horas_desde")
+
+  cuenta          Cuenta   @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  planesAsesora   PlanAsesora[]
+  horarios        Horario[]
+  auditorias      Auditoria[] @relation("AsesoraActor")
+  sustitucionesComoSustituta SustitucionSemanal[] @relation("SustitucionSustituta")
+  sesionesComoEfectiva       Sesion[]            @relation("SesionAsesoraEfectiva")
+}
+
+model Plan {
+  id             String   @id @default(uuid())
+  nombre         String
+  horasIncluidas Int      @map("horas_incluidas")
+  reglas         Json?    // solo_online, franjas, etc.
+  paisAplica     String?  @map("pais_aplica")
+
+  usuarios       Usuario[]
+  planesAsesora  PlanAsesora[]
+  horariosPlan   HorarioPlan[]
+}
+
+model PlanAsesora {
+  asesoraId String
+  planId    String
+  asesora   Asesora @relation(fields: [asesoraId], references: [id], onDelete: Cascade)
+  plan      Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  @@id([asesoraId, planId])
+  @@map("plan_asesora")
+}
+
+model Horario {
+  id            String    @id @default(uuid())
+  asesoraId     String    @map("asesora_id")
+  diaSemana     Int       @map("dia_semana") // 1-6 L-S
+  horaInicio    String    @map("hora_inicio") // "09:00" Bolivia
+  horaFin       String    @map("hora_fin")
+  modalidad     Modalidad
+  funciones     Json?     // ["lectura_dinamica", "aprende_a_leer", "nivelacion", "matematicas"]
+  linkZoom      String?   @map("link_zoom")
+  cerrado       Boolean   @default(false)
+  capacidadMax  Int       @default(10) @map("capacidad_max")
+
+  asesora       Asesora   @relation(fields: [asesoraId], references: [id], onDelete: Cascade)
+  planes        HorarioPlan[]
+  inscripciones InscripcionHorario[]
+  inscripcionesSemanales InscripcionHorarioSemana[]
+  sesiones      Sesion[]
+  sustitucionesSemanales SustitucionSemanal[]
+}
+
+// Una sola semana (lunes como referencia): otra asesora cubre el horario; luego vuelve la titular.
+model SustitucionSemanal {
+  id                 String   @id @default(uuid())
+  horarioId          String   @map("horario_id")
+  semanaInicio       DateTime @db.Date @map("semana_inicio")
+  asesoraSustitutaId String   @map("asesora_sustituta_id")
+  adminId            String?  @map("admin_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  horario             Horario @relation(fields: [horarioId], references: [id], onDelete: Cascade)
+  asesoraSustituta    Asesora @relation("SustitucionSustituta", fields: [asesoraSustitutaId], references: [id], onDelete: Cascade)
+
+  @@unique([horarioId, semanaInicio])
+  @@map("sustitucion_semanal")
+}
+
+model HorarioPlan {
+  horarioId String
+  planId    String
+  horario   Horario @relation(fields: [horarioId], references: [id], onDelete: Cascade)
+  plan      Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  @@id([horarioId, planId])
+  @@map("horario_plan")
+}
+
+model InscripcionHorario {
+  id         String   @id @default(uuid())
+  usuarioId  String   @map("usuario_id")
+  horarioId  String   @map("horario_id")
+  fechaDesde DateTime @default(now()) @map("fecha_desde")
+  estado     String   @default("activa")
+
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  horario    Horario  @relation(fields: [horarioId], references: [id], onDelete: Cascade)
+  @@unique([usuarioId, horarioId])
+  @@map("inscripcion_horario")
+}
+
+// Inscripción solo para la semana del lunes indicado (no permanente). Complementa InscripcionHorario.
+model InscripcionHorarioSemana {
+  id            String   @id @default(uuid())
+  usuarioId     String   @map("usuario_id")
+  horarioId     String   @map("horario_id")
+  lunesSemana   DateTime @db.Date @map("lunes_semana")
+  estado        String   @default("activa")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  usuario  Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  horario  Horario @relation(fields: [horarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, horarioId, lunesSemana])
+  @@map("inscripcion_horario_semana")
+}
+
+model Sesion {
+  id                  String    @id @default(uuid())
+  horarioId           String    @map("horario_id")
+  fecha               DateTime  @db.Date
+  fechaHoraFin        DateTime  @map("fecha_hora_fin")
+  pasoClaseAsesora    Boolean   @default(false) @map("paso_clase_asesora")
+  timestampAsistencia DateTime? @map("timestamp_asistencia")
+  // Si hay sustitución semanal, la hora cuenta para esta asesora en reportes (no para la titular del horario).
+  asesoraEfectivaId   String?   @map("asesora_efectiva_id")
+
+  horario         Horario  @relation(fields: [horarioId], references: [id], onDelete: Cascade)
+  asesoraEfectiva Asesora? @relation("SesionAsesoraEfectiva", fields: [asesoraEfectivaId], references: [id], onDelete: SetNull)
+  asistencias     AsistenciaSesion[]
+
+  @@unique([horarioId, fecha])
+}
+
+model AsistenciaSesion {
+  id               String   @id @default(uuid())
+  sesionId         String   @map("sesion_id")
+  usuarioId        String   @map("usuario_id")
+  presente         Boolean? // null = sin marcar
+  avance           String?  @db.Text
+  observaciones    String?  @db.Text
+  enviadoRevision  Boolean  @default(false) @map("enviado_revision")
+
+  sesion   Sesion  @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  usuario  Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@unique([sesionId, usuarioId])
+  @@map("asistencia_sesion")
+}
+
+model Mensualidad {
+  id         String   @id @default(uuid())
+  usuarioId  String   @map("usuario_id")
+  mes        Int
+  anio       Int
+  pagado     Boolean  @default(false)
+  monto      Decimal? @db.Decimal(10, 2)
+  fechaPago  DateTime? @map("fecha_pago")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  @@unique([usuarioId, mes, anio])
+  @@map("mensualidad")
+}
+
+model Auditoria {
+  id           String   @id @default(uuid())
+  accion       String
+  entidad      String
+  entidadId    String   @map("entidad_id")
+  detalles     Json?
+  usuarioId    String?  @map("usuario_id")
+  asesoraId    String?  @map("asesora_id")
+  adminId      String?  @map("admin_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  usuarioModificado Usuario? @relation("UsuarioModificado", fields: [usuarioId], references: [id])
+  asesoraActor      Asesora? @relation("AsesoraActor", fields: [asesoraId], references: [id])
+}
