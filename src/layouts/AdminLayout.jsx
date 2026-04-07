@@ -27,11 +27,17 @@ export default function AdminLayout() {
             <NavLink to="/admin/estadisticas">Estadísticas</NavLink>
             <NavLink to="/admin/cuotas">Cuotas</NavLink>
             <NavLink to="/admin/anadir">Añadir</NavLink>
+            <NavLink to="/admin/perfil">Editar perfil</NavLink>
           </nav>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span style={{ color: '#6b7280', textAlign: 'right' }}>
             <span style={{ display: 'block', fontWeight: 600, color: '#374151' }}>Administración</span>
+            {[user?.nombre, user?.apellidos].filter(Boolean).length > 0 ? (
+              <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>
+                {[user?.nombre, user?.apellidos].filter(Boolean).join(' ')}
+              </span>
+            ) : null}
             {user?.email ? (
               <span style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 400 }}>{user.email}</span>
             ) : null}

@@ -80,9 +80,16 @@ export default function DetalleAlumno({ usuario, ultimoRegistro, historialAudito
           <h4>Último registro</h4>
           <p style={{ margin: 0 }}>
             {ultimoRegistro.accionEtiqueta || ultimoRegistro.accion} — {new Date(ultimoRegistro.createdAt).toLocaleString()}
-            {(ultimoRegistro.adminEmail || ultimoRegistro.detalles?.adminEmail) && (
+            {(ultimoRegistro.adminDisplay ||
+              ultimoRegistro.adminEmail ||
+              ultimoRegistro.detalles?.adminEtiqueta ||
+              ultimoRegistro.detalles?.adminEmail) && (
               <span style={{ display: 'block', marginTop: '0.35rem', fontSize: '0.9rem', color: '#475569' }}>
-                Administrador: {ultimoRegistro.adminEmail ?? ultimoRegistro.detalles?.adminEmail}
+                Administrador:{' '}
+                {ultimoRegistro.adminDisplay ??
+                  ultimoRegistro.detalles?.adminEtiqueta ??
+                  ultimoRegistro.adminEmail ??
+                  ultimoRegistro.detalles?.adminEmail}
               </span>
             )}
           </p>
@@ -95,8 +102,17 @@ export default function DetalleAlumno({ usuario, ultimoRegistro, historialAudito
             {historialAuditoria.map((a) => (
               <li key={a.id}>
                 {new Date(a.createdAt).toLocaleString()} — {a.accionEtiqueta || a.accion}
-                {(a.adminEmail || a.detalles?.adminEmail) && (
-                  <span style={{ color: '#475569' }}>{' · '}Admin: {a.adminEmail ?? a.detalles?.adminEmail}</span>
+                {(a.adminDisplay ||
+                  a.adminEmail ||
+                  a.detalles?.adminEtiqueta ||
+                  a.detalles?.adminEmail) && (
+                  <span style={{ color: '#475569' }}>
+                    {' · '}Admin:{' '}
+                    {a.adminDisplay ??
+                      a.detalles?.adminEtiqueta ??
+                      a.adminEmail ??
+                      a.detalles?.adminEmail}
+                  </span>
                 )}
               </li>
             ))}

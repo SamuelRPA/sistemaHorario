@@ -50,6 +50,14 @@ export default function AdminAsesoras() {
   const guardarAsesora = (e) => {
     e.preventDefault();
     if (!detalle?.id || !form) return;
+    const pasabaActiva = detalle.activo !== false;
+    const quedaActiva = form?.activo !== false;
+    if (pasabaActiva && !quedaActiva) {
+      const ok = window.confirm(
+        '¿Inhabilitar esta asesora?\n\nSe eliminarán todas sus franjas (horarios), inscripciones y sesiones vinculadas. Los cupos quedarán libres. No podrá iniciar sesión.'
+      );
+      if (!ok) return;
+    }
     setSaving(true);
     const body = trimFormStrings({ ...form, activo: form?.activo !== false }, [
       'nombre',
@@ -133,7 +141,10 @@ export default function AdminAsesoras() {
                     <div className="form-group"><label>Apellidos *</label><input value={form?.apellidos} onChange={(e) => setForm({ ...form, apellidos: soloTextoNombre(e.target.value) })} onBlur={(e) => setForm({ ...form, apellidos: soloTextoNombre(e.target.value.trim()) })} inputMode="text" required /></div>
                     <div className="form-group"><label>Celular</label><input value={form?.celular} onChange={(e) => setForm({ ...form, celular: soloCelular(e.target.value) })} onBlur={(e) => setForm({ ...form, celular: soloCelular(e.target.value.trim()) })} inputMode="tel" placeholder="Opcional" /></div>
                     <div className="form-group full-width">
-                      <label className="check-left"><input type="checkbox" checked={form?.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Activa (desmarcar impide entrar al sistema)</label>
+                      <label className="check-left">
+                        <input type="checkbox" checked={form?.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} />
+                        Activa (al desmarcar: no puede entrar y se borran todas sus clases/horarios; cupos libres)
+                      </label>
                     </div>
                     <div className="form-group full-width"><label>Link Zoom global</label><input type="url" value={form?.linkZoomGlobal} onChange={(e) => setForm({ ...form, linkZoomGlobal: e.target.value })} onBlur={(e) => setForm({ ...form, linkZoomGlobal: e.target.value.trim() })} placeholder="https://zoom.us/..." /></div>
                   </div>

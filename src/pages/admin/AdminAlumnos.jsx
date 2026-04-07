@@ -118,6 +118,14 @@ export default function AdminAlumnos() {
       alert('El enganche (inscripción) no puede ser mayor al monto total.');
       return;
     }
+    const pasabaActivo = detalle?.usuario?.activo !== false;
+    const quedaActivo = form?.activo !== false;
+    if (pasabaActivo && !quedaActivo) {
+      const ok = window.confirm(
+        '¿Inhabilitar este alumno?\n\nSe quitarán todas sus inscripciones a horarios (quedan libres las plazas), las horas saldo pasan a 0 y no podrá iniciar sesión.'
+      );
+      if (!ok) return;
+    }
     setSaving(true);
     const { montoPorCuota: _omitMpc, ...formSinMpc } = form;
     const payload = trimFormStrings(
@@ -290,7 +298,7 @@ export default function AdminAlumnos() {
                     <div className="form-group">
                       <label className="check-left">
                         <input type="checkbox" checked={form?.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} />
-                        Activo
+                        Activo (al desmarcar: quita inscripciones, horas saldo 0, sin acceso)
                       </label>
                     </div>
                   </div>
