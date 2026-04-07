@@ -19,6 +19,9 @@ CREATE TABLE "Cuenta" (
   "password_hash" TEXT   NOT NULL,
   "rol"           "Rol"   NOT NULL,
   "activo"        BOOLEAN NOT NULL DEFAULT true,
+  "nombre"        TEXT,
+  "apellidos"     TEXT,
+  "celular"       TEXT,
   CONSTRAINT "Cuenta_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "Cuenta_email_key" UNIQUE ("email")
 );

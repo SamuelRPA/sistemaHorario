@@ -10,6 +10,11 @@ export const ETIQUETAS_ACCION_AUDITORIA = {
   admin_pago_cuota: 'Registro de pago o estado de una cuota (cuenta administración)',
   admin_registro_abono: 'Registro de abono a favor del alumno (cuenta administración)',
   admin_edicion_asesora: 'Edición de ficha de asesora o planes (cuenta administración)',
+  admin_desactiva_asesora_libera_horarios:
+    'Administración inhabilitó una asesora y eliminó sus horarios (cupos liberados)',
+  admin_desactiva_alumno_libera_horarios:
+    'Administración inhabilitó un alumno, quitó inscripciones y puso horas saldo en 0',
+  admin_edita_perfil: 'El administrador actualizó su perfil',
   auth_force_password_change_required: 'Se exigió cambio de contraseña en el primer acceso',
   auth_recuperacion_password: 'Recuperación de contraseña por correo',
   auth_password_changed_first_login: 'Contraseña cambiada en primer ingreso',

@@ -29,6 +29,10 @@ model Cuenta {
   passwordHash String   @map("password_hash")
   rol          Rol
   activo       Boolean  @default(true)
+  // Perfil administrador (editable en /admin/perfil); null en otros roles.
+  nombre       String?
+  apellidos    String?
+  celular      String?
 
   usuario  Usuario?
   asesora  Asesora?

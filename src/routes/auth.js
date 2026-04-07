@@ -313,11 +313,20 @@ router.get('/me', requireAuth(), async (req, res) => {
   });
   if (!cuenta) return res.status(404).json({ error: 'Cuenta no encontrada' });
   const mustChangePassword = await hasPendingFirstPasswordChange(cuenta.id);
+  const nombre =
+    cuenta.usuario?.nombre ?? cuenta.asesora?.nombre ?? cuenta.nombre ?? null;
+  const apellidos =
+    cuenta.usuario?.apellidos ?? cuenta.asesora?.apellidos ?? cuenta.apellidos ?? null;
+  const celular =
+    cuenta.usuario?.celular ?? cuenta.asesora?.celular ?? cuenta.celular ?? null;
   res.json({
     id: cuenta.id,
     email: cuenta.email,
     rol: cuenta.rol,
     mustChangePassword,
+    nombre,
+    apellidos,
+    celular,
     usuario: cuenta.usuario,
     asesora: cuenta.asesora,
   });
