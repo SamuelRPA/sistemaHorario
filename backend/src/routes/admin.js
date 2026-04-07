@@ -1,12 +1,12 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { requireAuth } from '../lib/auth.js';
+import { requireAuth, signToken, setAuthCookie } from '../lib/auth.js';
 import { PrismaClient } from '@prisma/client';
 import { computeEstadoCuotas, calcMontoPorCuota } from '../lib/cuotas.js';
 import { etiquetaAccionAuditoria } from '../lib/auditoriaEtiquetas.js';
 import { inicioDiaBolivia, fechaHoraFinSesion } from '../lib/timezone.js';
 import { lunesSemanaBolivia, esLunesBolivia, fechaClaseEnSemana } from '../lib/sustitucionSemanal.js';
-import { detallesConAdminEmail } from '../lib/auditoriaAdmin.js';
+import { detallesConAdminEmail, formatAdminEtiqueta } from '../lib/auditoriaAdmin.js';
 import { BCRYPT_ROUNDS } from '../lib/security.js';
 
 const prisma = new PrismaClient();
@@ -31,10 +31,110 @@ router.use(requireAuth(['administrador']));
 router.get('/administradores', async (_req, res) => {
   const administradores = await prisma.cuenta.findMany({
     where: { rol: 'administrador', activo: true },
-    select: { id: true, email: true },
+    select: { id: true, email: true, nombre: true, apellidos: true },
     orderBy: { email: 'asc' },
   });
   res.json({ administradores });
+});
+
+/** Perfil del administrador (datos en Cuenta) */
+router.get('/perfil', async (req, res) => {
+  const cuenta = await prisma.cuenta.findUnique({
+    where: { id: req.auth.sub },
+    select: { email: true, nombre: true, apellidos: true, celular: true, rol: true },
+  });
+  if (!cuenta || cuenta.rol !== 'administrador') {
+    return res.status(403).json({ error: 'Solo administradores' });
+  }
+  res.json({
+    email: cuenta.email,
+    nombre: cuenta.nombre ?? '',
+    apellidos: cuenta.apellidos ?? '',
+    celular: cuenta.celular ?? '',
+  });
+});
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+router.patch('/perfil', async (req, res) => {
+  const cuentaId = req.auth.sub;
+  const cuenta = await prisma.cuenta.findUnique({
+    where: { id: cuentaId },
+    select: { id: true, rol: true, email: true },
+  });
+  if (!cuenta || cuenta.rol !== 'administrador') {
+    return res.status(403).json({ error: 'Solo administradores' });
+  }
+  const { nombre, apellidos, celular, email } = req.body || {};
+  const data = {};
+  if (typeof nombre === 'string') {
+    const t = nombre.trim();
+    if (!t) return res.status(400).json({ error: 'El nombre es obligatorio' });
+    data.nombre = t;
+  }
+  if (typeof apellidos === 'string') {
+    const t = apellidos.trim();
+    if (!t) return res.status(400).json({ error: 'Los apellidos son obligatorios' });
+    data.apellidos = t;
+  }
+  if (celular !== undefined) {
+    data.celular = celular ? String(celular).trim() : null;
+  }
+  let emailAnterior;
+  let emailNuevo;
+  if (email !== undefined) {
+    if (typeof email !== 'string') return res.status(400).json({ error: 'Correo no válido' });
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return res.status(400).json({ error: 'El correo es obligatorio' });
+    if (!EMAIL_RE.test(normalized)) return res.status(400).json({ error: 'Formato de correo no válido' });
+    if (normalized !== cuenta.email) {
+      const taken = await prisma.cuenta.findFirst({
+        where: { email: normalized, NOT: { id: cuentaId } },
+        select: { id: true },
+      });
+      if (taken) return res.status(409).json({ error: 'Ese correo ya está en uso por otra cuenta' });
+      data.email = normalized;
+      emailAnterior = cuenta.email;
+      emailNuevo = normalized;
+    }
+  }
+  if (Object.keys(data).length === 0) {
+    return res.status(400).json({ error: 'Nada que actualizar' });
+  }
+  try {
+    await prisma.cuenta.update({ where: { id: cuentaId }, data });
+  } catch (e) {
+    if (e?.code === 'P2002') {
+      return res.status(409).json({ error: 'Ese correo ya está en uso por otra cuenta' });
+    }
+    throw e;
+  }
+  if (data.email) {
+    const token = signToken({
+      sub: cuentaId,
+      email: data.email,
+      rol: 'administrador',
+      usuarioId: null,
+      asesoraId: null,
+    });
+    setAuthCookie(res, token);
+  }
+  await prisma.auditoria.create({
+    data: {
+      accion: 'admin_edita_perfil',
+      entidad: 'cuenta',
+      entidadId: cuentaId,
+      detalles: await detallesConAdminEmail(prisma, cuentaId, {
+        descripcion: data.email
+          ? 'El administrador actualizó su perfil (incluido el correo de inicio de sesión).'
+          : 'El administrador actualizó su perfil (nombre, apellidos o celular).',
+        campos: Object.keys(data),
+        ...(emailAnterior && emailNuevo ? { emailAnterior, emailNuevo } : {}),
+      }),
+      adminId: cuentaId,
+    },
+  });
+  res.json({ ok: true });
 });
 
 /** Listar todos los horarios (con filtro virtual/presencial) */
@@ -140,7 +240,10 @@ router.get('/asesoras', async (req, res) => {
   }
 });
 
-/** Editar asesora (todos los campos; email no editable). activo = false inhabilita el acceso al sistema. */
+/**
+ * Editar asesora (todos los campos; email no editable).
+ * activo = false: inhabilita la cuenta y elimina todos sus horarios (inscripciones/sesiones en cascada), liberando cupos.
+ */
 router.patch('/asesoras/:asesoraId', async (req, res) => {
   const adminId = req.auth.sub;
   const { asesoraId } = req.params;
@@ -161,11 +264,41 @@ router.patch('/asesoras/:asesoraId', async (req, res) => {
     cambios.push(...Object.keys(data));
   }
   if (typeof body.activo === 'boolean') {
-    await prisma.cuenta.update({
+    const cuentaRow = await prisma.cuenta.findUnique({
       where: { id: asesora.cuentaId },
-      data: { activo: body.activo },
+      select: { activo: true },
     });
-    cambios.push('activo');
+    const deactivando = body.activo === false && (cuentaRow?.activo ?? true);
+    if (deactivando) {
+      const nHorarios = await prisma.horario.count({ where: { asesoraId } });
+      await prisma.$transaction([
+        prisma.horario.deleteMany({ where: { asesoraId } }),
+        prisma.cuenta.update({
+          where: { id: asesora.cuentaId },
+          data: { activo: false },
+        }),
+      ]);
+      await prisma.auditoria.create({
+        data: {
+          accion: 'admin_desactiva_asesora_libera_horarios',
+          entidad: 'asesora',
+          entidadId: asesoraId,
+          detalles: await detallesConAdminEmail(prisma, adminId, {
+            descripcion:
+              'Asesora inhabilitada por administración: se eliminaron sus horarios (franjas), inscripciones y sesiones vinculadas. Los cupos quedan libres.',
+            horariosEliminados: nHorarios,
+          }),
+          adminId,
+          asesoraId,
+        },
+      });
+    } else {
+      await prisma.cuenta.update({
+        where: { id: asesora.cuentaId },
+        data: { activo: body.activo },
+      });
+      cambios.push('activo');
+    }
   }
   if (Array.isArray(body.planIds)) {
     await prisma.planAsesora.deleteMany({ where: { asesoraId } });
@@ -343,19 +476,30 @@ router.get('/usuarios/:usuarioId', async (req, res) => {
   });
   const adminIdsHist = [...new Set(auditorias.map((a) => a.adminId).filter(Boolean))];
   const cuentasAdminHist = adminIdsHist.length
-    ? await prisma.cuenta.findMany({ where: { id: { in: adminIdsHist } }, select: { id: true, email: true } })
+    ? await prisma.cuenta.findMany({
+        where: { id: { in: adminIdsHist } },
+        select: { id: true, email: true, nombre: true, apellidos: true },
+      })
     : [];
-  const emailAdminHist = new Map(cuentasAdminHist.map((c) => [c.id, c.email]));
-  const mapAuditHist = (a) => ({
-    ...a,
-    accionEtiqueta: etiquetaAccionAuditoria(a.accion),
-    adminEmail: (() => {
-      const fromId = a.adminId ? emailAdminHist.get(a.adminId) : null;
-      if (fromId) return fromId;
-      if (typeof a.detalles === 'object' && a.detalles?.adminEmail) return String(a.detalles.adminEmail);
-      return null;
-    })(),
-  });
+  const cuentaAdminHistById = new Map(cuentasAdminHist.map((c) => [c.id, c]));
+  const mapAuditHist = (a) => {
+    const c = a.adminId ? cuentaAdminHistById.get(a.adminId) : null;
+    const adminEmail =
+      c?.email ||
+      (typeof a.detalles === 'object' && a.detalles?.adminEmail ? String(a.detalles.adminEmail) : null);
+    const adminDisplay =
+      formatAdminEtiqueta(c) ||
+      (typeof a.detalles === 'object' && a.detalles?.adminEtiqueta
+        ? String(a.detalles.adminEtiqueta)
+        : null) ||
+      adminEmail;
+    return {
+      ...a,
+      accionEtiqueta: etiquetaAccionAuditoria(a.accion),
+      adminEmail,
+      adminDisplay,
+    };
+  };
   const ultimoRegistro = auditorias[0] ? mapAuditHist(auditorias[0]) : null;
   const toNum = (v) => (v != null && v !== '' ? Number(v) : null);
   const usuarioJson = {
@@ -383,13 +527,17 @@ router.get('/usuarios/:usuarioId', async (req, res) => {
           asesoraId: ultimoRegistro.asesoraId,
           adminId: ultimoRegistro.adminId,
           adminEmail: ultimoRegistro.adminEmail,
+          adminDisplay: ultimoRegistro.adminDisplay,
         }
       : null,
     historialAuditoria: auditorias.map(mapAuditHist),
   });
 });
 
-/** Editar alumno (todos los campos) */
+/**
+ * Editar alumno (todos los campos).
+ * activo = false: inhabilita cuenta + usuario, elimina inscripciones (permanentes y por semana) y pone horasSaldo en 0.
+ */
 router.patch('/usuarios/:usuarioId', async (req, res) => {
   const adminId = req.auth.sub;
   const { usuarioId } = req.params;
@@ -425,6 +573,47 @@ router.patch('/usuarios/:usuarioId', async (req, res) => {
       cuotasTotales: merged.cuotasTotales,
     });
   }
+
+  const deactivandoAlumno =
+    typeof body.activo === 'boolean' && body.activo === false && usuario.activo === true;
+
+  if (deactivandoAlumno) {
+    data.activo = false;
+    data.horasSaldo = 0;
+    const nIns = await prisma.inscripcionHorario.count({ where: { usuarioId } });
+    const nInsSem = await prisma.inscripcionHorarioSemana.count({ where: { usuarioId } });
+    await prisma.$transaction(async (tx) => {
+      await tx.inscripcionHorario.deleteMany({ where: { usuarioId } });
+      await tx.inscripcionHorarioSemana.deleteMany({ where: { usuarioId } });
+      await tx.cuenta.update({ where: { id: usuario.cuentaId }, data: { activo: false } });
+      await tx.usuario.update({ where: { id: usuarioId }, data });
+    });
+    await prisma.auditoria.create({
+      data: {
+        accion: 'admin_desactiva_alumno_libera_horarios',
+        entidad: 'usuario',
+        entidadId: usuarioId,
+        detalles: await detallesConAdminEmail(prisma, adminId, {
+          descripcion:
+            'Alumno inhabilitado por administración: se quitaron todas las inscripciones a horarios (permanentes y por semana), horas saldo puestas en 0 y bloqueado el acceso al sistema.',
+          inscripcionesHorarioEliminadas: nIns,
+          inscripcionesSemanaEliminadas: nInsSem,
+          campos: Object.keys(data),
+        }),
+        adminId,
+        usuarioId,
+      },
+    });
+    return res.json({ ok: true });
+  }
+
+  if (typeof body.activo === 'boolean') {
+    await prisma.cuenta.update({
+      where: { id: usuario.cuentaId },
+      data: { activo: Boolean(body.activo) },
+    });
+  }
+
   if (Object.keys(data).length) {
     await prisma.usuario.update({ where: { id: usuarioId }, data });
     await prisma.auditoria.create({
@@ -832,9 +1021,12 @@ router.get('/reportes/auditoria', async (req, res) => {
 
   const adminIdsBatch = Array.from(new Set(auditorias.map((a) => a.adminId).filter(Boolean)));
   const cuentasAdminLookup = adminIdsBatch.length
-    ? await prisma.cuenta.findMany({ where: { id: { in: adminIdsBatch } }, select: { id: true, email: true } })
+    ? await prisma.cuenta.findMany({
+        where: { id: { in: adminIdsBatch } },
+        select: { id: true, email: true, nombre: true, apellidos: true },
+      })
     : [];
-  const emailAdminById = new Map(cuentasAdminLookup.map((c) => [c.id, c.email]));
+  const cuentaAdminById = new Map(cuentasAdminLookup.map((c) => [c.id, c]));
 
   if (funcionesFilter.length && alcance === 'alumnos') {
     auditorias = auditorias.filter((a) => {
@@ -849,11 +1041,16 @@ router.get('/reportes/auditoria', async (req, res) => {
     auditorias = auditorias.filter((a) => {
       const u = a.usuarioModificado;
       const as = a.asesoraActor;
-      const adminEmail = a.adminId
-        ? emailAdminById.get(a.adminId) || ''
+      const cAdm = a.adminId ? cuentaAdminById.get(a.adminId) : null;
+      const adminEmail = cAdm?.email
+        ? String(cAdm.email)
         : typeof a.detalles === 'object' && a.detalles?.adminEmail
           ? String(a.detalles.adminEmail)
           : '';
+      const adminEtiquetaTxt = formatAdminEtiqueta(cAdm)
+        || (typeof a.detalles === 'object' && a.detalles?.adminEtiqueta
+          ? String(a.detalles.adminEtiqueta)
+          : '');
       const blob = [
         a.accion,
         a.entidad,
@@ -864,6 +1061,7 @@ router.get('/reportes/auditoria', async (req, res) => {
         as?.nombre,
         as?.apellidos,
         adminEmail,
+        adminEtiquetaTxt,
       ]
         .filter(Boolean)
         .join(' ')
@@ -887,8 +1085,16 @@ router.get('/reportes/auditoria', async (req, res) => {
       asesoraId: a.asesoraId,
       adminId: a.adminId,
       adminEmail: (() => {
-        const fromId = a.adminId ? emailAdminById.get(a.adminId) : null;
-        if (fromId) return fromId;
+        const c = a.adminId ? cuentaAdminById.get(a.adminId) : null;
+        if (c?.email) return c.email;
+        if (typeof a.detalles === 'object' && a.detalles?.adminEmail) return String(a.detalles.adminEmail);
+        return null;
+      })(),
+      adminDisplay: (() => {
+        const c = a.adminId ? cuentaAdminById.get(a.adminId) : null;
+        const fromCuenta = formatAdminEtiqueta(c);
+        if (fromCuenta) return fromCuenta;
+        if (typeof a.detalles === 'object' && a.detalles?.adminEtiqueta) return String(a.detalles.adminEtiqueta);
         if (typeof a.detalles === 'object' && a.detalles?.adminEmail) return String(a.detalles.adminEmail);
         return null;
       })(),

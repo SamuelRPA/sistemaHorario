@@ -2,6 +2,7 @@
 
 # Variables de entorno (secretos)
 .env
+.env.docker
 .env.local
 .env.*.local
 

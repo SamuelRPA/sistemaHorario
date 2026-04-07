@@ -1,0 +1,12 @@
+.git
+.gitignore
+**/node_modules
+frontend/dist
+backend/node_modules
+*.md
+!docs/*.md
+.env
+.env.*
+!.env.docker.example
+.cursor
+terminals

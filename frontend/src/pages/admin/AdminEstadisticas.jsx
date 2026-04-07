@@ -29,6 +29,9 @@ const AUDITORIA_ACCIONES = [
   { id: 'admin_consulta_reporte_horas_asesoras', label: 'Admin consulta horas asesoras' },
   { id: 'admin_registro_abono', label: 'Admin registra abono' },
   { id: 'admin_edicion_asesora', label: 'Admin edita asesora' },
+  { id: 'admin_desactiva_asesora_libera_horarios', label: 'Admin inhabilita asesora (libera horarios)' },
+  { id: 'admin_desactiva_alumno_libera_horarios', label: 'Admin inhabilita alumno (quita inscripciones)' },
+  { id: 'admin_edita_perfil', label: 'Admin edita su perfil' },
   { id: 'auth_force_password_change_required', label: 'Forzar cambio de contraseña (alta cuenta)' },
   { id: 'auth_recuperacion_password', label: 'Recuperación de contraseña' },
   { id: 'auth_password_changed_first_login', label: 'Contraseña cambiada (primer ingreso)' },
@@ -75,6 +78,17 @@ function safeDateTimeEs(v) {
   if (v == null || v === '') return '–';
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? '–' : d.toLocaleString('es');
+}
+
+/** Texto para filtro y listas: nombre de perfil + correo de la cuenta admin. */
+function etiquetaAdminOpcion(adm) {
+  if (!adm?.email) return '';
+  const nom = [adm.nombre, adm.apellidos]
+    .filter((x) => x != null && String(x).trim() !== '')
+    .join(' ')
+    .trim();
+  if (nom) return `${nom} · ${adm.email}`;
+  return adm.email;
 }
 
 export default function AdminEstadisticas() {
@@ -306,7 +320,7 @@ export default function AdminEstadisticas() {
                 <option value="">— Todos los administradores —</option>
                 {listaAdmins.map((adm) => (
                   <option key={adm.id} value={adm.id}>
-                    {adm.email}
+                    {etiquetaAdminOpcion(adm)}
                   </option>
                 ))}
               </select>
@@ -714,7 +728,7 @@ export default function AdminEstadisticas() {
             Auditoría — {AUDITORIA_ALCANCE.find((x) => x.id === auditAlcance)?.label ?? '—'}
           </h3>
           <p className="stats-note">
-            Registros con fecha/hora, acción, entidad y personas vinculadas. Puedes filtrar por administrador (cuenta que ejecutó la acción), mes, acción, entidad, texto o (en alumnos) por materias del alumno.
+            Cada fila indica qué administrador realizó la acción (nombre del perfil y correo). Puedes filtrar por administrador, mes, acción, entidad, texto o (en alumnos) por materias del alumno.
           </p>
           {data._error && (
             <p style={{ color: 'var(--danger-red)', marginBottom: '0.75rem' }}>No se pudo cargar el reporte. Reintenta.</p>
@@ -726,7 +740,7 @@ export default function AdminEstadisticas() {
                   <tr>
                     <th>Fecha/hora</th>
                     <th>Acción</th>
-                    <th>Administrador (cuenta)</th>
+                    <th>Administrador</th>
                     <th>Otros actores</th>
                     <th>Alumno</th>
                     <th>Materias (alumno)</th>
@@ -736,7 +750,12 @@ export default function AdminEstadisticas() {
                 </thead>
                 <tbody>
                   {data.auditorias.map((a) => {
-                    const adminTxt = a.adminEmail ?? a.detalles?.adminEmail ?? '—';
+                    const adminTxt =
+                      a.adminDisplay ??
+                      a.detalles?.adminEtiqueta ??
+                      a.adminEmail ??
+                      a.detalles?.adminEmail ??
+                      '—';
                     const partesOtros = [];
                     if (a.asesora) partesOtros.push(`Asesora: ${a.asesora.nombre} ${a.asesora.apellidos}`);
                     const otrosActores = partesOtros.length ? partesOtros.join(' · ') : '—';

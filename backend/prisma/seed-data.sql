@@ -21,10 +21,10 @@ INSERT INTO "Plan" ("id", "nombre", "horas_incluidas", "reglas", "pais_aplica") 
 -- ------------------------------------------------------------
 -- 2. Cuentas (login) — contraseña: admin123
 -- ------------------------------------------------------------
-INSERT INTO "Cuenta" ("id", "email", "password_hash", "rol", "activo") VALUES
-  ('22222222-2222-2222-2222-222222222201', 'admin@sistema.local', '$2a$10$WewAlE5h2uPvcMYvwdZMy.GKiQFvTom9uJO7kryqhuTtzMG//tKWG', 'administrador', true),
-  ('22222222-2222-2222-2222-222222222202', 'asesora@sistema.local', '$2a$10$WewAlE5h2uPvcMYvwdZMy.GKiQFvTom9uJO7kryqhuTtzMG//tKWG', 'asesora', true),
-  ('22222222-2222-2222-2222-222222222203', 'usuario@sistema.local', '$2a$10$WewAlE5h2uPvcMYvwdZMy.GKiQFvTom9uJO7kryqhuTtzMG//tKWG', 'usuario', true);
+INSERT INTO "Cuenta" ("id", "email", "password_hash", "rol", "activo", "nombre", "apellidos", "celular") VALUES
+  ('22222222-2222-2222-2222-222222222201', 'admin@sistema.local', '$2a$10$WewAlE5h2uPvcMYvwdZMy.GKiQFvTom9uJO7kryqhuTtzMG//tKWG', 'administrador', true, 'Admin', 'Principal', NULL),
+  ('22222222-2222-2222-2222-222222222202', 'asesora@sistema.local', '$2a$10$WewAlE5h2uPvcMYvwdZMy.GKiQFvTom9uJO7kryqhuTtzMG//tKWG', 'asesora', true, NULL, NULL, NULL),
+  ('22222222-2222-2222-2222-222222222203', 'usuario@sistema.local', '$2a$10$WewAlE5h2uPvcMYvwdZMy.GKiQFvTom9uJO7kryqhuTtzMG//tKWG', 'usuario', true, NULL, NULL, NULL);
 
 -- ------------------------------------------------------------
 -- 3. Usuario (alumno)

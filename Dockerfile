@@ -1,0 +1,44 @@
+# Sistema de horarios — imagen única: API Express + SPA React (build estático)
+# Requiere PostgreSQL externo o el servicio `db` de docker-compose.
+
+FROM node:22-bookworm-slim AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM node:22-bookworm-slim AS backend-build
+WORKDIR /app/backend
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci
+COPY backend/prisma ./prisma
+COPY backend/src ./src
+RUN npx prisma generate
+
+FROM node:22-bookworm-slim AS runner
+WORKDIR /app/backend
+ENV NODE_ENV=production
+
+# OpenSSL: motor de consultas Prisma en imágenes slim
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Prisma CLI solo para `db push` al iniciar el contenedor
+RUN npm install -g prisma@5.22.0
+
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY backend/prisma ./prisma
+COPY backend/src ./src
+COPY --from=backend-build /app/backend/node_modules/.prisma ./node_modules/.prisma
+COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
+
+ENV FRONTEND_DIST=/app/frontend/dist
+ENV PORT=4000
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 4000
+ENTRYPOINT ["/docker-entrypoint.sh"]

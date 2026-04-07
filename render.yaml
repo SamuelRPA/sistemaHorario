@@ -1,0 +1,34 @@
+# Blueprint Render: https://render.com/docs/blueprint-spec
+#
+# Pasos manuales tras el primer deploy:
+# - Env Var JWT_SECRET: cadena aleatoria ≥32 caracteres (obligatorio en producción).
+# - Env Var CORS_ORIGIN: URL pública del servicio (ej. https://sistema-horario.onrender.com).
+# - Opcional: BOOTSTRAP_ADMIN_PASSWORD para la clave inicial de Carla, Sten y Samuel (por defecto 123456).
+#
+# preDeploy: prisma db push + seed-render (VACÍA la BD y deja solo Carla, Sten y Samuel).
+# Cada deploy borra alumnos, asesoras y el resto. Para otro comportamiento, cambia preDeploy.
+
+databases:
+  - name: sistema-horario-db
+    databaseName: sistema_horario
+    user: sistema_horario
+
+services:
+  - type: web
+    name: sistema-horario
+    runtime: node
+    buildCommand: npm ci --prefix frontend && npm run build --prefix frontend && npm ci --prefix backend && cd backend && npx prisma generate
+    preDeployCommand: cd backend && npx prisma db push && node prisma/seed-render.js
+    startCommand: cd backend && NODE_ENV=production node src/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sistema-horario-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false

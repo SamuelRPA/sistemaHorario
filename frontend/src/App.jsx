@@ -20,6 +20,7 @@ import AdminAsesoras from './pages/admin/AdminAsesoras';
 import AdminEstadisticas from './pages/admin/AdminEstadisticas';
 import AdminAnadir from './pages/admin/AdminAnadir';
 import AdminCuotas from './pages/admin/AdminCuotas';
+import AdminPerfil from './pages/admin/AdminPerfil';
 
 function PrivateRoute({ children, roles, allowMustChange = false }) {
   const { user, loading } = useAuth();
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="estadisticas" element={<AdminEstadisticas />} />
         <Route path="cuotas" element={<AdminCuotas />} />
         <Route path="anadir" element={<AdminAnadir />} />
+        <Route path="perfil" element={<AdminPerfil />} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />
     </Routes>
