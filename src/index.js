@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from 'cors';
@@ -36,10 +37,11 @@ app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
 
-/** En producción: sirve el build de Vite (mismo origen que /api; ideal para Render u otro PaaS). */
+/** En producción: sirve el build de Vite si existe (mismo origen que /api). Sin dist, solo API. */
 const frontendDist =
   process.env.FRONTEND_DIST || path.join(__dirname, '..', '..', 'frontend', 'dist');
-if (process.env.NODE_ENV === 'production') {
+const tieneSpa = process.env.NODE_ENV === 'production' && fs.existsSync(frontendDist);
+if (tieneSpa) {
   app.use(express.static(frontendDist));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) return next();
@@ -47,6 +49,8 @@ if (process.env.NODE_ENV === 'production') {
       if (err) next(err);
     });
   });
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn('[app] Producción sin carpeta SPA en', frontendDist, '— solo rutas /api');
 }
 
 const PORT = process.env.PORT || 4000;

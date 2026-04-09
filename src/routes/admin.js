@@ -8,6 +8,8 @@ import { inicioDiaBolivia, fechaHoraFinSesion } from '../lib/timezone.js';
 import { lunesSemanaBolivia, esLunesBolivia, fechaClaseEnSemana } from '../lib/sustitucionSemanal.js';
 import { detallesConAdminEmail, formatAdminEtiqueta } from '../lib/auditoriaAdmin.js';
 import { BCRYPT_ROUNDS } from '../lib/security.js';
+import { obtenerMapaReporteHorasAsesoras } from '../lib/reporteHorasAsesoras.js';
+import { streamPdfReporteHorasAsesora } from '../lib/pdfHorasAsesora.js';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -756,89 +758,29 @@ router.get('/reportes/asistencia', async (req, res) => {
   });
 });
 
+/** PDF: desglose de clases del mes (materias, día, hora) por asesora. */
+router.get('/reportes/horas-asesoras/pdf', async (req, res) => {
+  try {
+    const { anio, mes, asesoraId } = req.query;
+    if (!asesoraId || !String(asesoraId).trim()) {
+      return res.status(400).json({ error: 'Falta asesoraId' });
+    }
+    const porAsesora = await obtenerMapaReporteHorasAsesoras(prisma, { anio, mes });
+    const entry = porAsesora[asesoraId];
+    if (!entry) {
+      return res.status(404).json({ error: 'No hay sesiones para esta asesora en el período seleccionado.' });
+    }
+    streamPdfReporteHorasAsesora(res, entry, { anio, mes });
+  } catch (err) {
+    console.error('[GET /reportes/horas-asesoras/pdf]', err);
+    if (!res.headersSent) res.status(500).json({ error: err.message || 'Error al generar PDF' });
+  }
+});
+
 /** Reporte horas asesoras: solo sesiones desde fechaConteoHorasDesde (si existe) y con al menos un alumno inscrito activo en el horario. */
 router.get('/reportes/horas-asesoras', async (req, res) => {
   const { anio, mes } = req.query;
-  const where = {};
-  if (anio) where.fecha = { gte: new Date(`${anio}-01-01`), lte: new Date(`${anio}-12-31`) };
-  if (mes && anio) where.fecha = { gte: new Date(`${anio}-${String(mes).padStart(2, '0')}-01`), lte: new Date(`${anio}-${String(mes).padStart(2, '0')}-31`) };
-  const sesiones = await prisma.sesion.findMany({
-    where,
-    include: {
-      horario: {
-        include: {
-          asesora: true,
-          _count: { select: { inscripciones: { where: { estado: 'activa' } } } },
-        },
-      },
-      asesoraEfectiva: true,
-      asistencias: {
-        select: { presente: true },
-      },
-    },
-    orderBy: [{ fecha: 'desc' }, { horario: { horaInicio: 'asc' } }],
-  });
-
-  const porAsesora = {};
-  for (const s of sesiones) {
-    const titular = s.horario.asesora;
-    const efectiva = s.asesoraEfectiva ?? titular;
-    const inscripcionesActivas = s.horario._count?.inscripciones ?? 0;
-    if (inscripcionesActivas < 1) continue;
-
-    const desde = efectiva.fechaConteoHorasDesde;
-    if (desde) {
-      const diaSesion = inicioDiaBolivia(s.fecha);
-      const diaDesde = inicioDiaBolivia(desde);
-      if (diaSesion < diaDesde) continue;
-    }
-
-    const id = s.asesoraEfectivaId ?? s.horario.asesoraId;
-    if (!porAsesora[id]) {
-      porAsesora[id] = {
-        asesora: efectiva,
-        horas: 0,
-        horasNoHechas: 0,
-        sesiones: [],
-        fechaConteoHorasDesde: efectiva.fechaConteoHorasDesde,
-        semanas: {}, // semanaInicioIso -> resumen semanal
-      };
-    }
-    const totalAlumnos = s.asistencias.length;
-    const presentes = s.asistencias.filter((a) => a.presente === true).length;
-    const faltas = s.asistencias.filter((a) => a.presente === false).length;
-    const sinMarcar = totalAlumnos - presentes - faltas;
-    if (s.pasoClaseAsesora) porAsesora[id].horas += 1;
-    else porAsesora[id].horasNoHechas += 1;
-
-    const semanaInicio = lunesSemanaBolivia(s.fecha).toISODate();
-    if (!porAsesora[id].semanas[semanaInicio]) {
-      porAsesora[id].semanas[semanaInicio] = {
-        semanaInicio,
-        horas: 0,
-        horasNoHechas: 0,
-      };
-    }
-    if (s.pasoClaseAsesora) porAsesora[id].semanas[semanaInicio].horas += 1;
-    else porAsesora[id].semanas[semanaInicio].horasNoHechas += 1;
-
-    porAsesora[id].sesiones.push({
-      sesionId: s.id,
-      fecha: s.fecha,
-      horaInicio: s.horario.horaInicio,
-      horaFin: s.horario.horaFin,
-      modalidad: s.horario.modalidad,
-      pasoClase: s.pasoClaseAsesora,
-      fechaMarcado: s.timestampAsistencia,
-      totalAlumnos,
-      presentes,
-      faltas,
-      sinMarcar,
-      alumnosInscritos: inscripcionesActivas,
-      sesionPorSustitucion: Boolean(s.asesoraEfectivaId && s.asesoraEfectivaId !== s.horario.asesoraId),
-      asesoraTitularNombre: titular ? `${titular.nombre} ${titular.apellidos}`.trim() : null,
-    });
-  }
+  const porAsesora = await obtenerMapaReporteHorasAsesoras(prisma, { anio, mes });
 
   // Auditoría: guardamos el resumen semanal para trazar problemas de conteo por semanas.
   // Si el log falla, no debe romper el reporte.
