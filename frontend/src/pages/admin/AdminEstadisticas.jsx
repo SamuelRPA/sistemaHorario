@@ -102,6 +102,36 @@ export default function AdminEstadisticas() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [asesoraExpandida, setAsesoraExpandida] = useState(null);
+  const [pdfDescargandoId, setPdfDescargandoId] = useState(null);
+
+  const descargarPdfHorasAsesora = async (asesoraId) => {
+    if (!asesoraId) return;
+    setPdfDescargandoId(asesoraId);
+    try {
+      const params = new URLSearchParams({ anio: String(anio), mes: String(mes), asesoraId });
+      const res = await fetch(`/api/admin/reportes/horas-asesoras/pdf?${params}`, { credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        window.alert(err.error || 'No se pudo generar el PDF');
+        return;
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition');
+      let fname = `clases-asesora-${anio}-${mes}.pdf`;
+      const m = cd && cd.match(/filename="([^"]+)"/);
+      if (m) fname = m[1];
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.alert('No se pudo descargar el PDF');
+    } finally {
+      setPdfDescargandoId(null);
+    }
+  };
 
   const [auditAlcance, setAuditAlcance] = useState('alumnos');
   const [auditMes, setAuditMes] = useState('');
@@ -524,9 +554,21 @@ export default function AdminEstadisticas() {
                 if (!abierta) return null;
                 return (
                   <div style={{ marginTop: '1rem' }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0' }}>
-                      Detalle de {abierta.asesora ? `${abierta.asesora.nombre} ${abierta.asesora.apellidos}` : 'asesora'}
-                    </h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                      <h4 style={{ margin: 0, flex: '1 1 auto' }}>
+                        Detalle de {abierta.asesora ? `${abierta.asesora.nombre} ${abierta.asesora.apellidos}` : 'asesora'}
+                      </h4>
+                      {abierta.asesora?.id && (
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          disabled={pdfDescargandoId === abierta.asesora.id}
+                          onClick={() => descargarPdfHorasAsesora(abierta.asesora.id)}
+                        >
+                          {pdfDescargandoId === abierta.asesora.id ? 'Generando PDF…' : 'Descargar PDF (desglose del mes)'}
+                        </button>
+                      )}
+                    </div>
                     {Array.isArray(abierta.semanas) && abierta.semanas.length > 0 && (
                       <div style={{ margin: '0 0 1rem 0' }}>
                         <h5 style={{ margin: '0 0 0.5rem 0' }}>Resumen por semana</h5>
@@ -556,6 +598,8 @@ export default function AdminEstadisticas() {
                       <thead>
                         <tr>
                           <th>Fecha</th>
+                          <th>Día</th>
+                          <th>Materias / cursos</th>
                           <th>Hora</th>
                           <th>Modalidad</th>
                           <th>¿Pasó clase?</th>
@@ -568,6 +612,12 @@ export default function AdminEstadisticas() {
                         {(abierta.sesiones || []).map((s) => (
                           <tr key={s.sesionId}>
                             <td>{safeDateEs(s.fecha)}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              {s.diaSemana
+                                ? s.diaSemana.charAt(0).toUpperCase() + s.diaSemana.slice(1)
+                                : '—'}
+                            </td>
+                            <td style={{ maxWidth: '14rem', fontSize: '0.875rem' }}>{s.materias || '—'}</td>
                             <td>{s.horaInicio}–{s.horaFin}</td>
                             <td>{labelModalidad(s.modalidad)}</td>
                             <td>

@@ -37,7 +37,7 @@ npm run dev
 
 - **Qué hace el proyecto, limitaciones y operación:** [docs/DESCRIPCION-DEL-PROYECTO.md](docs/DESCRIPCION-DEL-PROYECTO.md)
 - **Render:** [render.yaml](render.yaml) — cada `preDeploy` **vacía la base** y deja **solo** las 3 cuentas admin (Carla, Sten, Samuel). Configura `JWT_SECRET` y `CORS_ORIGIN` en el panel.
-- **Docker** raíz: `Dockerfile`, `docker-compose.yml`, `.env.docker.example`
+- **Docker:** `docker-compose.yml` (imagen full-stack `backend/Dockerfile.fullstack`), `frontend/Dockerfile`, `backend/Dockerfile`, `backend/docker-entrypoint.sh`. Ramas solo-front / solo-api para Render: [scripts/render-branches.sh](scripts/render-branches.sh)
 
 ```bash
 cp .env.docker.example .env.docker

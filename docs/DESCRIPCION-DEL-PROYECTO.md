@@ -95,14 +95,16 @@ Archivo auxiliar para Docker: **`.env.docker.example`** (copiar a **`.env.docker
 
 ## Despliegue con Docker
 
-Archivos en la **raíz del monorepo**:
-
 | Archivo | Uso |
 |---------|-----|
-| `Dockerfile` | Imagen multi-stage: construye el front, genera el cliente Prisma, instala dependencias de producción del backend y arranca con `docker-entrypoint.sh`. |
-| `docker-compose.yml` | Servicio **PostgreSQL 16** + **app**; la app espera a que la BD esté sana y ejecuta `prisma db push` antes de `node src/index.js`. |
-| `docker-entrypoint.sh` | Sincroniza esquema y lanza el servidor. |
-| `.dockerignore` | Reduce contexto de build. |
+| `backend/Dockerfile.fullstack` | Imagen multi-stage (build desde la **raíz** del monorepo): front + API + `docker-entrypoint.sh`. Usada por `docker-compose`. |
+| `backend/Dockerfile` | Solo API + Prisma; contexto de build = carpeta `backend/` (p. ej. rama `render-backend` vía `git subtree split`). |
+| `frontend/Dockerfile` | SPA en nginx; contexto = carpeta `frontend/` (p. ej. rama `render-frontend`). |
+| `backend/docker-entrypoint.sh` | `prisma db push` y arranque del servidor. |
+| `docker-compose.yml` | **PostgreSQL 16** + app full-stack. |
+| `frontend/.dockerignore`, `backend/.dockerignore` | Reducen contexto de build. |
+
+**Ramas para Render (una carpeta en la raíz):** en `main` deja el monorepo completo; luego `./scripts/render-branches.sh` genera `render-frontend` y `render-backend` para servicios con Root Directory vacío y Dockerfile en cada proyecto.
 
 **Pasos típicos (local):**
 

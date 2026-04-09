@@ -26,7 +26,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: backend/Dockerfile.fullstack
     ports:
       - "${APP_PORT:-4000}:4000"
     environment:

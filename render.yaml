@@ -1,5 +1,10 @@
 # Blueprint Render: https://render.com/docs/blueprint-spec
 #
+# Monorepo en la rama principal: este servicio construye front + back sin Docker.
+# Alternativa con Docker por carpeta: ramas `render-frontend` / `render-backend`
+# (ver scripts/render-branches.sh) y en Render un Static Site + un Web Service
+# con imagen Docker y root en la raíz de cada rama.
+#
 # Pasos manuales tras el primer deploy:
 # - Env Var JWT_SECRET: cadena aleatoria ≥32 caracteres (obligatorio en producción).
 # - Env Var CORS_ORIGIN: URL pública del servicio (ej. https://sistema-horario.onrender.com).
