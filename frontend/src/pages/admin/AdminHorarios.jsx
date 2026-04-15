@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DetalleAlumno from '../../components/DetalleAlumno';
 import { labelModalidad } from '../../constants/modalidad';
 import { normalizeEnteroHorasSaldo } from '../../utils/inputFilters';
+import { apiUrl } from '../../apiUrl.js';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -21,7 +22,7 @@ export default function AdminHorarios() {
 
   useEffect(() => {
     const q = modalidad ? `?modalidad=${modalidad}` : '';
-    fetch(`/api/admin/horarios${q}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/horarios${q}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setHorarios(data.horarios || []))
       .catch(() => setHorarios([]))
@@ -46,7 +47,7 @@ export default function AdminHorarios() {
   const openSlot = (h) => {
     setUsuarioDetalle(null);
     setEleccionMultiples(null);
-    fetch(`/api/admin/horarios/${h.id}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/horarios/${h.id}`), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setSlotDetalle)
       .catch(() => setSlotDetalle(h));
@@ -67,7 +68,7 @@ export default function AdminHorarios() {
   };
 
   const openUsuario = (usuarioId) => {
-    fetch(`/api/admin/usuarios/${usuarioId}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setUsuarioDetalle)
       .catch(() => setUsuarioDetalle(null));
@@ -192,7 +193,7 @@ export default function AdminHorarios() {
               titularId={slotDetalle.asesora?.id}
               items={slotDetalle.sustitucionesSemanales || []}
               onChanged={() => {
-                fetch(`/api/admin/horarios/${slotDetalle.id}`, { credentials: 'include' })
+                fetch(apiUrl(`/api/admin/horarios/${slotDetalle.id}`), { credentials: 'include' })
                   .then((r) => (r.ok ? r.json() : Promise.reject()))
                   .then(setSlotDetalle)
                   .catch(() => {});
@@ -236,7 +237,7 @@ function AdminSustitucionesSemanales({ horarioId, titularId, items, onChanged })
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/asesoras', { credentials: 'include' })
+    fetch(apiUrl('/api/admin/asesoras'), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => setAsesoras(d.asesoras || []))
       .catch(() => setAsesoras([]));
@@ -253,7 +254,7 @@ function AdminSustitucionesSemanales({ horarioId, titularId, items, onChanged })
       return;
     }
     setSaving(true);
-    fetch('/api/admin/sustituciones-semanales', {
+    fetch(apiUrl('/api/admin/sustituciones-semanales'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -270,7 +271,7 @@ function AdminSustitucionesSemanales({ horarioId, titularId, items, onChanged })
 
   const eliminar = (id) => {
     if (!window.confirm('¿Quitar esta sustitución? La titular volverá a gestionar esa semana.')) return;
-    fetch(`/api/admin/sustituciones-semanales/${id}`, { method: 'DELETE', credentials: 'include' })
+    fetch(apiUrl(`/api/admin/sustituciones-semanales/${id}`), { method: 'DELETE', credentials: 'include' })
       .then((r) => (r.ok ? onChanged() : r.json().then((e) => Promise.reject(e))))
       .catch((e) => alert(e.error || 'Error al eliminar'));
   };
@@ -328,7 +329,7 @@ function AdminUsuarioAcciones({ usuarioId, onDone }) {
     if (horas !== '') body.horasSaldo = parseInt(horas, 10);
     if (activo !== null) body.activo = activo;
     if (Object.keys(body).length === 0) return;
-    fetch(`/api/admin/usuarios/${usuarioId}`, {
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

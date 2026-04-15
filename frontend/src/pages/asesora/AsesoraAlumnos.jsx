@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { textoMateriasAlumno } from '../../utils/materiasAlumno';
 import { lunesISODeFecha, ordenarHorariosPorDiaHora } from '../../utils/semana';
+import { apiUrl } from '../../apiUrl.js';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -33,7 +34,7 @@ export default function AsesoraAlumnos() {
 
   const reloadHorarios = useCallback(() => {
     const lunes = lunesISODeFecha(diaReferenciaSemana);
-    return fetch(`/api/asesora/horarios?lunesSemana=${lunes}`, { credentials: 'include' })
+    return fetch(apiUrl(`/api/asesora/horarios?lunesSemana=${lunes}`), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setHorarios(ordenarHorariosPorDiaHora(data.horarios || [])))
       .catch(() => {});
@@ -42,7 +43,7 @@ export default function AsesoraAlumnos() {
   useEffect(() => {
     setLoadingHorarios(true);
     const lunes = lunesISODeFecha(diaReferenciaSemana);
-    fetch(`/api/asesora/horarios?lunesSemana=${lunes}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/asesora/horarios?lunesSemana=${lunes}`), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
         const list = ordenarHorariosPorDiaHora(data.horarios || []);
@@ -68,7 +69,7 @@ export default function AsesoraAlumnos() {
       setAlumnosEnHorario([]);
       return;
     }
-    fetch(`/api/asesora/horario/${horarioAlumnosId}/alumnos?lunesSemana=${lunesSemana}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/asesora/horario/${horarioAlumnosId}/alumnos?lunesSemana=${lunesSemana}`), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setAlumnosEnHorario(data.alumnos || []))
       .catch(() => setAlumnosEnHorario([]));
@@ -95,7 +96,7 @@ export default function AsesoraAlumnos() {
     setBuscando(true);
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`/api/asesora/alumnos?busqueda=${encodeURIComponent(term)}`, { credentials: 'include' });
+        const r = await fetch(apiUrl(`/api/asesora/alumnos?busqueda=${encodeURIComponent(term)}`), { credentials: 'include' });
         const data = await r.json();
         if (!cancelled) setAlumnosBusqueda(data.alumnos || []);
       } catch (_e) {
@@ -131,7 +132,7 @@ export default function AsesoraAlumnos() {
     if (idsEnHorario.has(usuarioId)) return;
     setActualizandoAlumnos(true);
     try {
-      const r = await fetch(`/api/asesora/horario/${horarioAlumnosId}/alumnos`, {
+      const r = await fetch(apiUrl(`/api/asesora/horario/${horarioAlumnosId}/alumnos`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -144,7 +145,7 @@ export default function AsesoraAlumnos() {
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || 'Error al añadir alumno');
 
-      const res = await fetch(`/api/asesora/horario/${horarioAlumnosId}/alumnos?lunesSemana=${lunesSemana}`, { credentials: 'include' });
+      const res = await fetch(apiUrl(`/api/asesora/horario/${horarioAlumnosId}/alumnos?lunesSemana=${lunesSemana}`), { credentials: 'include' });
       const resData = await res.json();
       setAlumnosEnHorario(resData.alumnos || []);
       reloadHorarios();
@@ -160,14 +161,14 @@ export default function AsesoraAlumnos() {
     setActualizandoAlumnos(true);
     try {
       const q = alcance === 'solo_semana' ? `?lunesSemana=${lunesSemana}` : '';
-      const r = await fetch(`/api/asesora/horario/${horarioAlumnosId}/alumnos/${usuarioId}${q}`, {
+      const r = await fetch(apiUrl(`/api/asesora/horario/${horarioAlumnosId}/alumnos/${usuarioId}${q}`), {
         method: 'DELETE',
         credentials: 'include',
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.error || 'Error al quitar alumno');
 
-      const res = await fetch(`/api/asesora/horario/${horarioAlumnosId}/alumnos?lunesSemana=${lunesSemana}`, { credentials: 'include' });
+      const res = await fetch(apiUrl(`/api/asesora/horario/${horarioAlumnosId}/alumnos?lunesSemana=${lunesSemana}`), { credentials: 'include' });
       const resData = await res.json();
       setAlumnosEnHorario(resData.alumnos || []);
       reloadHorarios();
@@ -187,7 +188,7 @@ export default function AsesoraAlumnos() {
     }
     setGuardandoCupo(true);
     try {
-      const r = await fetch(`/api/asesora/horario/${horarioAlumnosId}`, {
+      const r = await fetch(apiUrl(`/api/asesora/horario/${horarioAlumnosId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

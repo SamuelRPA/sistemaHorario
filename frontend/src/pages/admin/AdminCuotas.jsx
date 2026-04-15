@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FUNCIONES_OPCIONES, labelFuncion } from '../../constants/funciones';
+import { apiUrl } from '../../apiUrl.js';
 
 const FILTRO_PAGO = { todos: 'todos', morosos: 'morosos', alDia: 'alDia' };
 
@@ -18,7 +19,7 @@ export default function AdminCuotas() {
     if (busqueda.trim()) params.set('busqueda', busqueda.trim());
     if (funcionesFiltro.length) params.set('funciones', funcionesFiltro.join(','));
     params.set('incluirMora', '1');
-    fetch(`/api/admin/alumnos?${params}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/alumnos?${params}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setAlumnos(data.alumnos || []))
       .catch(() => setAlumnos([]))
@@ -38,7 +39,7 @@ export default function AdminCuotas() {
   const abrirCuotas = (usuarioId) => {
     setLoadingDetalle(true);
     setDetalle(null);
-    fetch(`/api/admin/usuarios/${usuarioId}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setDetalle)
       .catch(() => setDetalle(null))
@@ -215,7 +216,7 @@ function FechaPrimerVencimientoEditor({ usuario, onDone }) {
   const guardar = () => {
     if (!usuarioId) return;
     setGuardando(true);
-    fetch(`/api/admin/usuarios/${usuarioId}`, {
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -257,7 +258,7 @@ function PanelPeriodosCuotas({ usuario, resumenCuotas, onDone }) {
 
   const togglePago = (mes, anio, pagado) => {
     setBusy(true);
-    fetch(`/api/admin/usuarios/${usuarioId}/mensualidades`, {
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}/mensualidades`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -350,7 +351,7 @@ function AccionesRapidasCuotas({ usuario, onDone }) {
 
   const patch = (body, reset) => {
     if (!usuarioId) return;
-    fetch(`/api/admin/usuarios/${usuarioId}`, {
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -414,7 +415,7 @@ function PanelCuotasAbonos({ usuario, onDone }) {
       return;
     }
     setEnviando(true);
-    fetch(`/api/admin/usuarios/${usuarioId}/abonos`, {
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}/abonos`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

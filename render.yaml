@@ -7,7 +7,9 @@
 #
 # Pasos manuales tras el primer deploy:
 # - Env Var JWT_SECRET: cadena aleatoria ≥32 caracteres (obligatorio en producción).
-# - Env Var CORS_ORIGIN: URL pública del servicio (ej. https://sistema-horario.onrender.com).
+# - Env Var CORS_ORIGIN: URL pública del servicio (ej. https://sistemahorario.onrender.com).
+#   Si desarrollas el front en localhost contra este API, añade también http://localhost:3000
+#   y define COOKIE_CROSS_SITE=1 en el servicio (cookies SameSite=None; ver backend/.env.example).
 # - Opcional: BOOTSTRAP_ADMIN_PASSWORD para la clave inicial de Carla, Sten y Samuel (por defecto 123456).
 #
 # preDeploy: prisma db push + seed-render (VACÍA la BD y deja solo Carla, Sten y Samuel).

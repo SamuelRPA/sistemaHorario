@@ -3,6 +3,7 @@ import DetalleAlumno from '../../components/DetalleAlumno';
 import { FUNCIONES_OPCIONES, labelFuncion } from '../../constants/funciones';
 import { labelModalidad } from '../../constants/modalidad';
 import { soloTextoNombre, soloCelular, trimFormStrings, normalizeEnteroHorasSaldo } from '../../utils/inputFilters';
+import { apiUrl } from '../../apiUrl.js';
 
 export default function AdminAlumnos() {
   const [busqueda, setBusqueda] = useState('');
@@ -24,7 +25,7 @@ export default function AdminAlumnos() {
   };
 
   useEffect(() => {
-    fetch('/api/admin/planes', { credentials: 'include' })
+    fetch(apiUrl('/api/admin/planes'), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : { planes: [] })
       .then((d) => setPlanes(d.planes || []));
   }, []);
@@ -34,7 +35,7 @@ export default function AdminAlumnos() {
     const params = new URLSearchParams();
     if (busqueda.trim()) params.set('busqueda', busqueda.trim());
     if (funcionesFiltro.length) params.set('funciones', funcionesFiltro.join(','));
-    fetch(`/api/admin/alumnos?${params}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/alumnos?${params}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setAlumnos(data.alumnos || []))
       .catch(() => setAlumnos([]))
@@ -48,7 +49,7 @@ export default function AdminAlumnos() {
   const openDetalle = (usuarioId) => {
     setEditando(false);
     setForm(null);
-    fetch(`/api/admin/usuarios/${usuarioId}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setDetalle)
       .catch(() => setDetalle(null));
@@ -140,7 +141,7 @@ export default function AdminAlumnos() {
       },
       ['nombre', 'apellidos', 'celular', 'tutorLegal', 'pais', 'departamento', 'observaciones']
     );
-    fetch(`/api/admin/usuarios/${detalle.usuario.id}`, {
+    fetch(apiUrl(`/api/admin/usuarios/${detalle.usuario.id}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -332,7 +333,7 @@ function AccionesRapidasHoras({ usuario, onDone }) {
 
   const patch = (body, reset) => {
     if (!usuarioId) return;
-    fetch(`/api/admin/usuarios/${usuarioId}`, {
+    fetch(apiUrl(`/api/admin/usuarios/${usuarioId}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

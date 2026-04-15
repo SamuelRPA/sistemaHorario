@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FUNCIONES_OPCIONES } from '../../constants/funciones';
 import { soloTextoNombre, soloCelular, trimFormStrings, normalizeEnteroHorasSaldo } from '../../utils/inputFilters';
+import { apiUrl } from '../../apiUrl.js';
 
 /** Mensajes tipo "Usuario creado..." / "Asesora creada..." */
 function esExitoAlta(msg) {
@@ -13,7 +14,7 @@ export default function AdminAnadir() {
   const [mensaje, setMensaje] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/planes', { credentials: 'include' })
+    fetch(apiUrl('/api/admin/planes'), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((d) => setPlanes(d.planes || []))
       .catch(() => setPlanes([]));
@@ -177,7 +178,7 @@ function FormUsuario({ planes, mensaje, onSuccess, onError }) {
       },
       ['email', 'nombre', 'apellidos', 'celular', 'tutorLegal', 'pais', 'departamento', 'observaciones']
     );
-    fetch('/api/admin/usuarios', {
+    fetch(apiUrl('/api/admin/usuarios'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -497,7 +498,7 @@ function FormAsesora({ planes, mensaje, onSuccess, onError }) {
       { ...form, funciones: form.funciones.length ? form.funciones : undefined },
       ['email', 'nombre', 'apellidos', 'celular']
     );
-    fetch('/api/admin/asesoras', {
+    fetch(apiUrl('/api/admin/asesoras'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { labelModalidad } from '../../constants/modalidad';
 import { textoMateriasAlumno } from '../../utils/materiasAlumno';
 import { lunesISODeFecha, ordenarHorariosPorDiaHora } from '../../utils/semana';
+import { apiUrl } from '../../apiUrl.js';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 // Franjas horarias de 07:00 a 21:00 (cada hora)
@@ -33,7 +34,7 @@ export default function AsesoraHorarios() {
     let cancelled = false;
     const lunes = lunesISODeFecha(fecha);
     setLoading(true);
-    fetch(`/api/asesora/horarios?lunesSemana=${lunes}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/asesora/horarios?lunesSemana=${lunes}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => {
         if (cancelled) return;
@@ -60,7 +61,7 @@ export default function AsesoraHorarios() {
     setPopup(horarioId);
     setSesionData({ alumnos: [], sesionId: null, puedeEditarAsistencia: true, rolSesion: null });
     setAlumnoDetalle(null);
-    fetch(`/api/asesora/sesion/${horarioId}/alumnos?fecha=${fecha}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/asesora/sesion/${horarioId}/alumnos?fecha=${fecha}`), { credentials: 'include' })
       .then(async (r) => {
         const errBody = r.ok ? null : await r.json().catch(() => ({}));
         if (r.status === 403 && errBody?.codigo === 'sustitucion_activa') {
@@ -73,13 +74,13 @@ export default function AsesoraHorarios() {
       })
       .then(async (data) => {
         if (!data.sesionId && data.alumnos?.length > 0) {
-          await fetch('/api/asesora/sesion', {
+          await fetch(apiUrl('/api/asesora/sesion'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ horarioId, fecha }),
           });
-          const res = await fetch(`/api/asesora/sesion/${horarioId}/alumnos?fecha=${fecha}`, { credentials: 'include' });
+          const res = await fetch(apiUrl(`/api/asesora/sesion/${horarioId}/alumnos?fecha=${fecha}`), { credentials: 'include' });
           if (!res.ok) {
             const e = await res.json().catch(() => ({}));
             throw new Error(e.error || 'Error');
@@ -123,7 +124,7 @@ export default function AsesoraHorarios() {
 
   const marcarTodosPresentes = () => {
     if (!sesionId) return;
-    fetch(`/api/asesora/sesion/${sesionId}/marcar-todos-presentes`, { method: 'POST', credentials: 'include' })
+    fetch(apiUrl(`/api/asesora/sesion/${sesionId}/marcar-todos-presentes`), { method: 'POST', credentials: 'include' })
       .then((r) => r.ok ? abrirSlot(popup) : r.json())
       .then((data) => data?.error && alert(data.error));
   };
@@ -132,7 +133,7 @@ export default function AsesoraHorarios() {
     setHistorialModalAlumno(alumno);
     setHistorialAlumno([]);
     setLoadingHistorial(true);
-    fetch(`/api/asesora/alumno/${alumno.usuarioId}/historial`, { credentials: 'include' })
+    fetch(apiUrl(`/api/asesora/alumno/${alumno.usuarioId}/historial`), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => setHistorialAlumno(data.historial || []))
       .catch(() => setHistorialAlumno([]))
@@ -474,7 +475,7 @@ function ModalEditarAlumno({ sesionId, horarioId, fecha, alumno, puedeEditar, on
   const guardar = () => {
     if (!sesionId || !puedeEditar) return;
     setSaving(true);
-    fetch(`/api/asesora/sesion/${sesionId}/alumno/${alumno.usuarioId}`, {
+    fetch(apiUrl(`/api/asesora/sesion/${sesionId}/alumno/${alumno.usuarioId}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

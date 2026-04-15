@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FUNCIONES_OPCIONES, labelFuncion } from '../../constants/funciones';
 import { labelModalidad } from '../../constants/modalidad';
+import { apiUrl } from '../../apiUrl.js';
 
 const TABS = [
   { id: 'asistencia', label: 'Asistencia alumnos' },
@@ -109,7 +110,7 @@ export default function AdminEstadisticas() {
     setPdfDescargandoId(asesoraId);
     try {
       const params = new URLSearchParams({ anio: String(anio), mes: String(mes), asesoraId });
-      const res = await fetch(`/api/admin/reportes/horas-asesoras/pdf?${params}`, { credentials: 'include' });
+      const res = await fetch(apiUrl(`/api/admin/reportes/horas-asesoras/pdf?${params}`), { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         window.alert(err.error || 'No se pudo generar el PDF');
@@ -154,7 +155,7 @@ export default function AdminEstadisticas() {
 
   useEffect(() => {
     if (tab !== 'auditoria') return;
-    fetch('/api/admin/administradores', { credentials: 'include' })
+    fetch(apiUrl('/api/admin/administradores'), { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setListaAdmins(Array.isArray(d.administradores) ? d.administradores : []))
       .catch(() => setListaAdmins([]));
@@ -172,13 +173,13 @@ export default function AdminEstadisticas() {
     };
 
     if (tab === 'asistencia') {
-      fetch(`/api/admin/reportes/asistencia?anio=${anio}&dia=${dia}`, { credentials: 'include' })
+      fetch(apiUrl(`/api/admin/reportes/asistencia?anio=${anio}&dia=${dia}`), { credentials: 'include' })
         .then((r) => r.json())
         .then(apply)
         .catch(() => apply({ reporte: [], _error: true }))
         .finally(done);
     } else if (tab === 'horas-asesoras') {
-      fetch(`/api/admin/reportes/horas-asesoras?anio=${anio}&mes=${mes}`, { credentials: 'include' })
+      fetch(apiUrl(`/api/admin/reportes/horas-asesoras?anio=${anio}&mes=${mes}`), { credentials: 'include' })
         .then((r) => r.json())
         .then(apply)
         .catch(() => apply({ reporte: [], _error: true }))
@@ -187,19 +188,19 @@ export default function AdminEstadisticas() {
       const params = new URLSearchParams();
       if (paisFiltro.trim()) params.set('pais', paisFiltro.trim());
       if (funcionesFiltro.length) params.set('funciones', funcionesFiltro.join(','));
-      fetch(`/api/admin/reportes/alumnos?${params}`, { credentials: 'include' })
+      fetch(apiUrl(`/api/admin/reportes/alumnos?${params}`), { credentials: 'include' })
         .then((r) => r.json())
         .then(apply)
         .catch(() => apply({ reporte: [], total: 0, _error: true }))
         .finally(done);
     } else if (tab === 'pagos') {
-      fetch(`/api/admin/reportes/pagos?mes=${mes}&anio=${anio}`, { credentials: 'include' })
+      fetch(apiUrl(`/api/admin/reportes/pagos?mes=${mes}&anio=${anio}`), { credentials: 'include' })
         .then((r) => r.json())
         .then(apply)
         .catch(() => apply({ reporte: [], _error: true }))
         .finally(done);
     } else if (tab === 'actividad') {
-      fetch(`/api/admin/reportes/actividad?anio=${anio}`, { credentials: 'include' })
+      fetch(apiUrl(`/api/admin/reportes/actividad?anio=${anio}`), { credentials: 'include' })
         .then((r) => r.json())
         .then(apply)
         .catch(() => apply({ inscripciones: 0, porPlan: {}, porPais: {}, _error: true }))
@@ -215,7 +216,7 @@ export default function AdminEstadisticas() {
       if (auditEntidad) params.set('entidad', auditEntidad);
       if (auditQ.trim()) params.set('q', auditQ.trim());
       if (auditAdminId) params.set('adminId', auditAdminId);
-      fetch(`/api/admin/reportes/auditoria?${params}`, { credentials: 'include' })
+      fetch(apiUrl(`/api/admin/reportes/auditoria?${params}`), { credentials: 'include' })
         .then((r) => r.json())
         .then(apply)
         .catch(() => apply({ auditorias: [], _error: true }))

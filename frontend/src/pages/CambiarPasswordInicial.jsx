@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../apiUrl.js';
 
 export default function CambiarPasswordInicial() {
   const [nuevaPassword, setNuevaPassword] = useState('');
@@ -23,7 +24,7 @@ export default function CambiarPasswordInicial() {
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/cambiar-password-inicial', {
+      const res = await fetch(apiUrl('/api/auth/cambiar-password-inicial'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

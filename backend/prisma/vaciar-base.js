@@ -1,23 +1,25 @@
 /**
  * Elimina todas las filas en orden seguro de FKs.
  * Deja la base sin cuentas; después debe crearse solo lo necesario (p. ej. 3 admins).
+ *
+ * No usa prisma.$transaction(callback): con el pooler de Supabase (PgBouncer/Supavisor)
+ * las transacciones interactivas largas suelen fallar con P2028 ("Transaction not found").
+ * Cada deleteMany es una transacción corta y compatible con el pooler.
  */
 export async function vaciarBaseDatos(prisma) {
-  await prisma.$transaction(async (tx) => {
-    await tx.asistenciaSesion.deleteMany();
-    await tx.sesion.deleteMany();
-    await tx.inscripcionHorarioSemana.deleteMany();
-    await tx.inscripcionHorario.deleteMany();
-    await tx.sustitucionSemanal.deleteMany();
-    await tx.horarioPlan.deleteMany();
-    await tx.horario.deleteMany();
-    await tx.mensualidad.deleteMany();
-    await tx.abono.deleteMany();
-    await tx.planAsesora.deleteMany();
-    await tx.auditoria.deleteMany();
-    await tx.usuario.deleteMany();
-    await tx.asesora.deleteMany();
-    await tx.plan.deleteMany();
-    await tx.cuenta.deleteMany();
-  });
+  await prisma.asistenciaSesion.deleteMany();
+  await prisma.sesion.deleteMany();
+  await prisma.inscripcionHorarioSemana.deleteMany();
+  await prisma.inscripcionHorario.deleteMany();
+  await prisma.sustitucionSemanal.deleteMany();
+  await prisma.horarioPlan.deleteMany();
+  await prisma.horario.deleteMany();
+  await prisma.mensualidad.deleteMany();
+  await prisma.abono.deleteMany();
+  await prisma.planAsesora.deleteMany();
+  await prisma.auditoria.deleteMany();
+  await prisma.usuario.deleteMany();
+  await prisma.asesora.deleteMany();
+  await prisma.plan.deleteMany();
+  await prisma.cuenta.deleteMany();
 }
