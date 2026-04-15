@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiUrl } from '../apiUrl.js';
+import { friendlyApiError, readApiResponse } from '../utils/http.js';
 
 const AuthContext = createContext(null);
 
@@ -8,9 +10,10 @@ export function AuthProvider({ children }) {
 
   const fetchMe = async () => {
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
+      const res = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
+      const parsed = await readApiResponse(res);
+      if (parsed.ok && parsed.data) {
+        const data = parsed.data;
         setUser(data);
         return data;
       }
@@ -24,17 +27,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (identificador, password) => {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ identificador, password }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Error al iniciar sesión');
+    const parsed = await readApiResponse(res);
+    if (!parsed.ok || !parsed.data) {
+      throw new Error(friendlyApiError(parsed, 'No pudimos iniciar sesión. Verifica tus datos e intenta otra vez.'));
     }
-    const data = await res.json();
+    const data = parsed.data;
     setUser({
       id: data.rol === 'usuario' ? data.usuario?.id : data.rol === 'asesora' ? data.asesora?.id : null,
       email: identificador,
@@ -47,7 +50,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
     setUser(null);
   };
 
