@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { trimStr } from '../utils/inputFilters';
+import { apiUrl } from '../apiUrl.js';
+import { friendlyApiError, readApiResponse } from '../utils/http.js';
 
 function maskEmail(email) {
   const e = String(email || '');
@@ -62,15 +64,19 @@ export default function Login() {
     setLoading(true);
     try {
       await login(trimStr(identificador), password);
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
-      const data = await res.json();
+      const res = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
+      const parsed = await readApiResponse(res);
+      if (!parsed.ok || !parsed.data) {
+        throw new Error(friendlyApiError(parsed, 'Ingresaste correctamente, pero no pudimos cargar tu perfil. Intenta nuevamente.'));
+      }
+      const data = parsed.data;
       await refresh();
       if (data.rol === 'usuario') navigate('/usuario');
       else if (data.rol === 'asesora') navigate('/asesora');
       else if (data.rol === 'administrador') navigate('/admin');
       else navigate('/');
     } catch (err) {
-      setError(err.message || 'Error al iniciar sesión');
+      setError(err.message || 'No pudimos iniciar sesión en este momento. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -87,14 +93,14 @@ export default function Login() {
     setMsg('');
     setLoadingRec(true);
     try {
-      const res = await fetch('/api/auth/recuperar-password/enviar-codigo', {
+      const res = await fetch(apiUrl('/api/auth/recuperar-password/enviar-codigo'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'No se pudo enviar el código');
+      const parsed = await readApiResponse(res);
+      if (!parsed.ok) throw new Error(friendlyApiError(parsed, 'No pudimos enviar el código. Intenta nuevamente.'));
       setOtp(['', '', '', '', '', '']);
       setRecoverySub('code');
       setMsg('Revisa tu bandeja y escribe el código de 6 dígitos.');
@@ -144,14 +150,14 @@ export default function Login() {
     setMsg('');
     setLoadingRec(true);
     try {
-      const res = await fetch('/api/auth/recuperar-password/verificar-codigo', {
+      const res = await fetch(apiUrl('/api/auth/recuperar-password/verificar-codigo'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email: trimStr(recuperarEmail), codigo: code }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Código incorrecto');
+      const parsed = await readApiResponse(res);
+      if (!parsed.ok) throw new Error(friendlyApiError(parsed, 'No pudimos verificar el código. Revísalo e intenta de nuevo.'));
       setRecoverySub('password');
       setMsg('');
       setMsgOk(false);
@@ -178,7 +184,7 @@ export default function Login() {
     setMsg('');
     setLoadingRec(true);
     try {
-      const res = await fetch('/api/auth/recuperar-password/confirmar', {
+      const res = await fetch(apiUrl('/api/auth/recuperar-password/confirmar'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -188,8 +194,8 @@ export default function Login() {
           nuevaPassword,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'No se pudo guardar la contraseña');
+      const parsed = await readApiResponse(res);
+      if (!parsed.ok) throw new Error(friendlyApiError(parsed, 'No pudimos guardar la nueva contraseña. Intenta nuevamente.'));
       setRecoverySub('success');
       setMsg('');
       setMsgOk(true);
