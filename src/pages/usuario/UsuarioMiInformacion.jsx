@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { labelFuncion } from '../../constants/funciones';
 import { labelModalidad } from '../../constants/modalidad';
+import { apiUrl } from '../../apiUrl.js';
 
 export default function UsuarioMiInformacion() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/usuario/mi-informacion', { credentials: 'include' })
+    fetch(apiUrl('/api/usuario/mi-informacion'), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then(setData)
       .catch(() => setData(null))

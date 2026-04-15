@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { soloTextoNombre, soloCelular, trimFormStrings } from '../../utils/inputFilters';
 import { useAuth } from '../../context/AuthContext';
+import { apiUrl } from '../../apiUrl.js';
 
 export default function AdminPerfil() {
   const { refresh } = useAuth();
@@ -11,7 +12,7 @@ export default function AdminPerfil() {
   const [popup, setPopup] = useState(null);
 
   useEffect(() => {
-    fetch('/api/admin/perfil', { credentials: 'include' })
+    fetch(apiUrl('/api/admin/perfil'), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((p) => {
         setPerfil(p);
@@ -39,7 +40,7 @@ export default function AdminPerfil() {
       ['email', 'nombre', 'apellidos', 'celular']
     );
     if (body.email) body.email = body.email.toLowerCase();
-    fetch('/api/admin/perfil', {
+    fetch(apiUrl('/api/admin/perfil'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -47,7 +48,7 @@ export default function AdminPerfil() {
     })
       .then((r) => (r.ok ? r.json() : r.json().then((d) => Promise.reject(d))))
       .then(() =>
-        fetch('/api/admin/perfil', { credentials: 'include' }).then((res) =>
+        fetch(apiUrl('/api/admin/perfil'), { credentials: 'include' }).then((res) =>
           res.ok ? res.json() : Promise.reject()
         )
       )

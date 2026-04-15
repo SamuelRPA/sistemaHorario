@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '../../apiUrl.js';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -15,7 +16,7 @@ export default function UsuarioHorariosDisponibles() {
   const [popup, setPopup] = useState(null); // { type, message }
 
   const loadHorarios = () => {
-    fetch('/api/usuario/horarios-disponibles', { credentials: 'include' })
+    fetch(apiUrl('/api/usuario/horarios-disponibles'), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setHorarios(data.horarios || []))
       .catch(() => setHorarios([]));
@@ -23,9 +24,9 @@ export default function UsuarioHorariosDisponibles() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/usuario/horarios-disponibles', { credentials: 'include' }).then((r) => r.json()),
-      fetch('/api/usuario/horario', { credentials: 'include' }).then((r) => r.json()),
-      fetch('/api/usuario/perfil', { credentials: 'include' }).then((r) => (r.ok ? r.json() : null)),
+      fetch(apiUrl('/api/usuario/horarios-disponibles'), { credentials: 'include' }).then((r) => r.json()),
+      fetch(apiUrl('/api/usuario/horario'), { credentials: 'include' }).then((r) => r.json()),
+      fetch(apiUrl('/api/usuario/perfil'), { credentials: 'include' }).then((r) => (r.ok ? r.json() : null)),
     ])
       .then(([disp, miHorario, perfil]) => {
         setHorarios(disp.horarios || []);
@@ -40,7 +41,7 @@ export default function UsuarioHorariosDisponibles() {
     setMensaje('');
     const body = { horarioId };
     if (clasesPorSemanaOverride !== undefined) body.clasesPorSemana = clasesPorSemanaOverride;
-    fetch('/api/usuario/inscripcion', {
+    fetch(apiUrl('/api/usuario/inscripcion'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -79,7 +80,7 @@ export default function UsuarioHorariosDisponibles() {
   const salirHorario = (horarioId) => {
     if (!window.confirm('¿Salir de este horario? Quedará registrado.')) return;
     setMensaje('');
-    fetch(`/api/usuario/inscripcion/${horarioId}`, { method: 'DELETE', credentials: 'include' })
+    fetch(apiUrl(`/api/usuario/inscripcion/${horarioId}`), { method: 'DELETE', credentials: 'include' })
       .then((r) => r.ok ? r.json() : r.json().then((d) => Promise.reject(d)))
       .then(() => {
         setMensaje('Has salido del horario. Quedó registrado.');

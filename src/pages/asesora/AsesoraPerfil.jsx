@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FUNCIONES_OPCIONES } from '../../constants/funciones';
 import { soloTextoNombre, soloCelular, trimFormStrings } from '../../utils/inputFilters';
+import { apiUrl } from '../../apiUrl.js';
 
 export default function AsesoraPerfil() {
   const [perfil, setPerfil] = useState(null);
@@ -12,8 +13,8 @@ export default function AsesoraPerfil() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/asesora/perfil', { credentials: 'include' }).then((r) => r.json()),
-      fetch('/api/asesora/planes', { credentials: 'include' }).then((r) => (r.ok ? r.json() : { planes: [] })),
+      fetch(apiUrl('/api/asesora/perfil'), { credentials: 'include' }).then((r) => r.json()),
+      fetch(apiUrl('/api/asesora/planes'), { credentials: 'include' }).then((r) => (r.ok ? r.json() : { planes: [] })),
     ])
       .then(([p, pl]) => {
         setPerfil(p);
@@ -37,7 +38,7 @@ export default function AsesoraPerfil() {
     setSaving(true);
     const { email, ...rest } = form;
     const body = trimFormStrings(rest, ['nombre', 'apellidos', 'celular', 'linkZoomGlobal']);
-    fetch('/api/asesora/perfil', {
+    fetch(apiUrl('/api/asesora/perfil'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -45,7 +46,7 @@ export default function AsesoraPerfil() {
     })
       .then((r) =>
         r.ok
-          ? fetch('/api/asesora/perfil', { credentials: 'include' }).then((r2) => r2.json()).then(setPerfil).then(() => setPopup({ type: 'success', message: 'Perfil guardado correctamente.' }))
+          ? fetch(apiUrl('/api/asesora/perfil'), { credentials: 'include' }).then((r2) => r2.json()).then(setPerfil).then(() => setPopup({ type: 'success', message: 'Perfil guardado correctamente.' }))
           : r.json()
       )
       .then((data) => data?.error && setPopup({ type: 'error', message: data.error }))

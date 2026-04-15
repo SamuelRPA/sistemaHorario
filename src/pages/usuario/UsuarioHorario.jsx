@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { labelModalidad } from '../../constants/modalidad';
+import { apiUrl } from '../../apiUrl.js';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const SLOTS_HORARIOS = Array.from({ length: 15 }, (_, i) => {
@@ -13,7 +14,7 @@ export default function UsuarioHorario() {
   const [detalle, setDetalle] = useState(null);
 
   useEffect(() => {
-    fetch('/api/usuario/horario', { credentials: 'include' })
+    fetch(apiUrl('/api/usuario/horario'), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setSlots(data.slots || []))
       .catch(() => setSlots([]))
@@ -42,7 +43,7 @@ export default function UsuarioHorario() {
   const abrirZoom = async (e, url, horarioId) => {
     e.preventDefault();
     try {
-      await fetch('/api/usuario/zoom-intento', {
+      await fetch(apiUrl('/api/usuario/zoom-intento'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

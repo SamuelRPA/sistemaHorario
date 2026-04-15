@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FUNCIONES_OPCIONES } from '../../constants/funciones';
 import { ordenarHorariosPorDiaHora } from '../../utils/semana';
+import { apiUrl } from '../../apiUrl.js';
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 // Franjas horarias de 07:00 a 21:00 (cada hora)
@@ -24,8 +25,8 @@ export default function AsesoraEditar() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/asesora/horarios', { credentials: 'include' }).then((r) => (r.ok ? r.json() : Promise.reject())),
-      fetch('/api/asesora/perfil', { credentials: 'include' }).then((r) => (r.ok ? r.json() : Promise.reject())),
+      fetch(apiUrl('/api/asesora/horarios'), { credentials: 'include' }).then((r) => (r.ok ? r.json() : Promise.reject())),
+      fetch(apiUrl('/api/asesora/perfil'), { credentials: 'include' }).then((r) => (r.ok ? r.json() : Promise.reject())),
     ])
       .then(([dataHorarios, dataPerfil]) => {
         const list = ordenarHorariosPorDiaHora(dataHorarios.horarios || []);
@@ -63,14 +64,14 @@ export default function AsesoraEditar() {
       };
     });
 
-    fetch('/api/asesora/horarios/slots', {
+    fetch(apiUrl('/api/asesora/horarios/slots'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ slots, modalidad: modalidadPredeterminada, funciones }),
     })
       .then((r) => (r.ok ? r.json() : r.json().then((d) => Promise.reject(d))))
-      .then(() => fetch('/api/asesora/horarios', { credentials: 'include' }).then((res) => res.json()))
+      .then(() => fetch(apiUrl('/api/asesora/horarios'), { credentials: 'include' }).then((res) => res.json()))
       .then((data) => {
         const list = ordenarHorariosPorDiaHora(data.horarios || []);
         setHorarios(list);

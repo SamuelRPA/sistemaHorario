@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { soloTextoNombre, soloCelular, trimFormStrings } from '../../utils/inputFilters';
 import { FUNCIONES_OPCIONES, labelFuncion } from '../../constants/funciones';
+import { apiUrl } from '../../apiUrl.js';
 
 export default function AdminAsesoras() {
   const [funcionesFiltro, setFuncionesFiltro] = useState([]);
@@ -13,7 +14,7 @@ export default function AdminAsesoras() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/planes', { credentials: 'include' })
+    fetch(apiUrl('/api/admin/planes'), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : { planes: [] })
       .then((d) => setPlanes(d.planes || []));
   }, []);
@@ -21,7 +22,7 @@ export default function AdminAsesoras() {
   useEffect(() => {
     setLoading(true);
     const params = funcionesFiltro.length ? new URLSearchParams({ funciones: funcionesFiltro.join(',') }) : new URLSearchParams();
-    fetch(`/api/admin/asesoras?${params}`, { credentials: 'include' })
+    fetch(apiUrl(`/api/admin/asesoras?${params}`), { credentials: 'include' })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => setAsesoras(data.asesoras || []))
       .catch(() => setAsesoras([]))
@@ -65,13 +66,13 @@ export default function AdminAsesoras() {
       'celular',
       'linkZoomGlobal',
     ]);
-    fetch(`/api/admin/asesoras/${detalle.id}`, {
+    fetch(apiUrl(`/api/admin/asesoras/${detalle.id}`), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(body),
     })
-      .then((r) => r.ok ? (setDetalle(null), setEditando(false), setForm(null), fetch(`/api/admin/asesoras?${funcionesFiltro.length ? new URLSearchParams({ funciones: funcionesFiltro.join(',') }) : ''}`, { credentials: 'include' }).then((res) => res.json()).then((d) => setAsesoras(d.asesoras || []))) : r.json())
+      .then((r) => r.ok ? (setDetalle(null), setEditando(false), setForm(null), fetch(apiUrl(`/api/admin/asesoras?${funcionesFiltro.length ? new URLSearchParams({ funciones: funcionesFiltro.join(',') }) : ''}`), { credentials: 'include' }).then((res) => res.json()).then((d) => setAsesoras(d.asesoras || []))) : r.json())
       .then((data) => data?.error && alert(data.error))
       .finally(() => setSaving(false));
   };

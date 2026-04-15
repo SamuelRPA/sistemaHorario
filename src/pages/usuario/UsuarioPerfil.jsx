@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { soloTextoNombre, soloCelular, trimFormStrings } from '../../utils/inputFilters';
 import { labelModalidad } from '../../constants/modalidad';
+import { apiUrl } from '../../apiUrl.js';
 
 export default function UsuarioPerfil() {
   const [perfil, setPerfil] = useState(null);
@@ -11,7 +12,7 @@ export default function UsuarioPerfil() {
   const [popup, setPopup] = useState(null); // { type: 'success'|'error', message }
 
   useEffect(() => {
-    fetch('/api/usuario/perfil', { credentials: 'include' })
+    fetch(apiUrl('/api/usuario/perfil'), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((p) => {
         setPerfil(p);
@@ -40,7 +41,7 @@ export default function UsuarioPerfil() {
       },
       ['nombre', 'apellidos', 'celular']
     );
-    fetch('/api/usuario/perfil', {
+    fetch(apiUrl('/api/usuario/perfil'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -48,7 +49,7 @@ export default function UsuarioPerfil() {
     })
       .then((r) => (r.ok ? r.json() : r.json().then((d) => Promise.reject(d))))
       .then(() => {
-        fetch('/api/usuario/perfil', { credentials: 'include' })
+        fetch(apiUrl('/api/usuario/perfil'), { credentials: 'include' })
           .then((res) => (res.ok ? res.json() : Promise.reject()))
           .then(setPerfil);
         setPopup({ type: 'success', message: 'Perfil actualizado correctamente.' });
