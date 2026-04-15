@@ -36,6 +36,23 @@ app.use('/api/asesora', asesoraRouter);
 app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'No encontramos esa ruta de la API.' });
+});
+
+app.use((err, req, res, next) => {
+  if (!req.path.startsWith('/api')) return next(err);
+  const status = Number(err?.status) || 500;
+  if (status >= 500) {
+    console.error('[API ERROR]', err);
+  }
+  return res.status(status).json({
+    error:
+      status >= 500
+        ? 'Ocurrió un problema en el servidor. Intenta nuevamente.'
+        : 'No pudimos procesar tu solicitud.',
+  });
+});
 
 /** En producción: sirve el build de Vite si existe (mismo origen que /api). Sin dist, solo API. */
 const frontendDist =
