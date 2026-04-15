@@ -24,18 +24,30 @@ export function getTokenFromRequest(req) {
   return null;
 }
 
+function cookieFlags() {
+  if (process.env.COOKIE_CROSS_SITE === '1') {
+    return { sameSite: 'none', secure: true };
+  }
+  return {
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  };
+}
+
 export function setAuthCookie(res, token, maxAge = 7 * 24 * 60 * 60 * 1000) {
+  const { sameSite, secure } = cookieFlags();
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure,
+    sameSite,
     path: '/',
     maxAge,
   });
 }
 
 export function clearAuthCookie(res) {
-  res.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+  const { sameSite, secure } = cookieFlags();
+  res.clearCookie(COOKIE_NAME, { path: '/', httpOnly: true, sameSite, secure });
 }
 
 /** Middleware: requiere estar logueado y opcionalmente un rol */
