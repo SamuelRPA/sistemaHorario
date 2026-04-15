@@ -11,7 +11,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "node prisma/seed.js",
-    "db:seed:render": "node prisma/seed-render.js"
+    "db:seed:render": "node prisma/seed-render.js",
+    "db:supabase": "prisma db push && node prisma/seed-render.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -19,6 +20,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.21.0",
+    "express-async-errors": "^3.1.1",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
